@@ -13,15 +13,19 @@ struct A{
     {}
 
     friend bool operator==(const A& a1, const A& a2);
+    //friend bool operator<(const A& a1, const A& a2);
 };
 
 bool operator==(const A& a1, const A& a2){
     return a1.val == a2.val;
 }
+/*bool operator<(const A& a1, const A& a2){
+    return a1.val < a2.val;
+}*/
 
 int main() {
 
-    //Dictionary<float, float> Flo_dic;
+
     MyDictionary<int, int> Int_dic;
 
     Int_dic.Set(1, 10);
@@ -43,8 +47,9 @@ int main() {
 
     Str_dic.Set("1", "2");
     Str_dic.Set("2", "1");
-    std::cout<<Str_dic.Get("2")<<Str_dic.Get("1");
+    std::cout<<Str_dic.Get("2")<<Str_dic.Get("1")<<'\n';
 
-    std::cout << "Hello, World!" << std::endl;
+
+
     return 0;
 }

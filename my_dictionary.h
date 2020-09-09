@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <functional>
 #include <vector>
+#include <stack>
 
 template<class TKey, class TValue>
 class Dictionary
@@ -37,8 +38,13 @@ template<class TKey>
                 return key;
             }
         };
+//ranking template system to correctly deduce templates used
+template <unsigned int N>
+struct rank : rank<N - 1> {};
+template<>
+struct rank<0> {};
 
-
+//defining cases of different data capabilities to get different scenarios of structure working
 template <class T>
         using equality_comparison = decltype(std::declval<T&>() == std::declval<T&>());
 
@@ -72,29 +78,120 @@ template <class T>
                 : std::is_same<comparison<T>, bool>
                 {};
 
-template <class TKey, class TValue, class Enable = void>
+//default template dictionary
+template <class TKey, class TValue, class Enable_equ = void, class Rank = rank<0>>
 class MyDictionary : Dictionary<TKey, TValue>{};
 
-/*
+//binary tree dictionary: using "==" and "<" operators
 template <class TKey, class TValue>
 class MyDictionary<TKey, TValue,//for binary tree
-        typename std::enable_if<is_comparable<TKey>::value && is_equality<TValue>::value>::type>
+        typename std::enable_if<is_comparable<TKey>::value && is_equality<TKey>::value>::type,
+        class rank<2>
+        >
         : Dictionary<TKey, TValue>
         {
+            //Binary-tree node
+            struct DataNode{
+                TKey key;
+                TValue val;
+                DataNode* left;
+                DataNode* right;
+                DataNode(const TKey& k, const TValue& v)
+                : key(k)
+                , val(v)
+                , left(nullptr), right(nullptr)
+                {}
+            };
+
+            DataNode* root;
+
+            DataNode* find_value(const TKey& key) const{
+                DataNode* data_pointer = root;
+                while (data_pointer != nullptr){
+                    if (data_pointer->key == key)
+                        return data_pointer;
+                    if (data_pointer->key < key)
+                        data_pointer = data_pointer->left;
+                    else
+                        data_pointer = data_pointer->right;
+                }
+                return nullptr;
+            }
+
+public:
+    MyDictionary()
+    :root(nullptr)
+    {}
+
+    ~MyDictionary(){
+                std::stack<DataNode*> st;
+                st.push(root);
+                while (st.size() != 0){
+                    DataNode* pointer = st.top();
+                    st.pop();
+                    if (pointer->left != nullptr)
+                        st.push(pointer->left);
+                    if (pointer->right != nullptr)
+                        st.push(pointer->right);
+                    delete pointer;
+                }
+            };
+
+    virtual const TValue& Get(const TKey& key) const{
+        DataNode* data = find_value(key);
+        if (data != nullptr)
+            return data->val;
+
+        throw MyNotFoundException<TKey>(key);
+    }
+    virtual void Set(const TKey& key, const TValue& value){
+        if (root == nullptr) {
+            root = new DataNode(key, value);
+            return;
+        }
+        DataNode* data_pointer = root;
+        while (true){
+            if (data_pointer->key == key){
+                data_pointer->val = value;
+                return;
+            }
+            if (data_pointer->key < key){
+                if (data_pointer->left == nullptr){
+                    data_pointer->left = new DataNode(key,value);
+                    return;
+                }
+                data_pointer = data_pointer->left;
+            }else{
+                if (data_pointer->right == nullptr){
+                    data_pointer->right = new DataNode(key, value);
+                    return;
+                }
+                data_pointer = data_pointer->right;
+            }
+        }
+    }
+
+    virtual bool IsSet(const TKey& key) const{
+        return find_value(key) != nullptr;
+    }
 
 };
-
+/*
+//hash function dictionary: uses == and std::hash<T>
 template <class TKey, class TValue>
 class MyDictionary<TKey, TValue,//for hash_table
-        typename std::enable_if<is_std_hashable<TKey>::value && is_comparable<TValue>::value>::type>
+        typename std::enable_if<is_std_hashable<TKey>::value && is_equality<TKey>::value>::type>
         : Dictionary<TKey, TValue>
         {
 
 };
 */
+//general ineffective dictionary: uses "==" operator
 template <class TKey, class TValue>
-class MyDictionary<TKey, TValue,//for simple pair walkthrough
-        typename std::enable_if<is_equality<TKey>::value && is_equality<TValue>::value>::type>
+class MyDictionary<TKey, TValue,
+        typename std::enable_if<is_equality<TKey>::value>::type,
+        class rank<1>
+        >
         : Dictionary<TKey, TValue>
         {
         private:
@@ -113,13 +210,8 @@ class MyDictionary<TKey, TValue,//for simple pair walkthrough
     MyDictionary() = default;
     ~MyDictionary() = default;
 
-    explicit MyDictionary(std::size_t dict_size)
-    : pairs(dict_size)
-    {}
-
     virtual const TValue& Get(const TKey& key) const{
         size_t place = find_value(key);
-
         if (place != pairs.size())
             return pairs[place].second;
 
