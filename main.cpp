@@ -12,12 +12,13 @@ struct A{
     {}
 
     friend bool operator==(const A& a1, const A& a2);
-    friend bool operator<(const A& a1, const A& a2);
+    //friend bool operator<(const A& a1, const A& a2);
 };
 
 bool operator==(const A& a1, const A& a2){
     return a1.val == a2.val;
 }
+
 namespace std {
     template<>
     struct hash<A>{
@@ -27,9 +28,40 @@ namespace std {
         }
     };
 }
-bool operator<(const A& a1, const A& a2){
-    return a1.val < a2.val;
+
+
+struct B{
+    int val;
+
+    explicit B(int v)
+            : val(v)
+    {}
+
+    friend bool operator==(const B& b1, const B& b2);
+    friend bool operator<(const B& b1, const B& b2);
+};
+
+bool operator==(const B& b1, const B& b2){
+    return b1.val == b2.val;
 }
+bool operator<(const B& b1, const B& b2){
+    return b1.val < b2.val;
+}
+
+struct C{
+    int val;
+
+    explicit C(int v)
+            : val(v)
+    {}
+
+    friend bool operator==(const C& c1, const C& c2);
+};
+
+bool operator==(const C& c1, const C& c2){
+    return c1.val == c2.val;
+}
+
 
 int main() {
 
@@ -41,7 +73,6 @@ int main() {
     std::cout<<Int_dic.Get(2);
     std::cout<<' '<< (Int_dic.IsSet(3) ? Int_dic.Get(3) : Int_dic.Get(1))<<'\n';
 
-
    MyDictionary<A, A> A_dic;
     A a1(20);
     a1.val = 20;
@@ -52,6 +83,28 @@ int main() {
     A a3(30);
     a3.val = 20;
     std::cout<<A_dic.Get(a2).val<<' '<<(A_dic.IsSet(a3) ? "Yes" : "No")<<'\n';
+
+    MyDictionary<B, B> B_dic;
+    B b1(20);
+    b1.val = 20;
+    B b2(10);
+    b2.val = 10;
+    B_dic.Set(b1, b2);
+    B_dic.Set(b2, b1);
+    B b3(30);
+    b3.val = 20;
+    std::cout<<B_dic.Get(b2).val<<' '<<(B_dic.IsSet(b3) ? "Yes" : "No")<<'\n';
+
+    MyDictionary<C, C> C_dic;
+    C c1(20);
+    c1.val = 20;
+    C c2(10);
+    c2.val = 10;
+    C_dic.Set(c1, c2);
+    C_dic.Set(c2, c1);
+    C c3(30);
+    c3.val = 20;
+    std::cout<<C_dic.Get(c2).val<<' '<<(C_dic.IsSet(c3) ? "Yes" : "No")<<'\n';
 
     MyDictionary<std::string, std::string> Str_dic;
 
