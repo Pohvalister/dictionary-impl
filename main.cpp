@@ -1,135 +1,147 @@
 #include <iostream>
 #include <unordered_map>
+
 #include "my_dictionary.h"
 
+#include <gtest/gtest.h>
+
 using namespace std;
+TEST(simple_testing, int_work) {
+
+    MyDictionary<int, int> int_dict;
+
+    int_dict.Set(1, 10);
+    int_dict.Set(2, 20);
+    EXPECT_EQ(int_dict.Get(2), 20);
+    EXPECT_FALSE(int_dict.IsSet(3));
+    EXPECT_THROW(int_dict.Get(3), MyNotFoundException<int>);
+}
+
+TEST(simple_testing, string_work) {
+
+    MyDictionary<string, string> int_dict;
+
+    int_dict.Set("1", "10");
+    int_dict.Set("2", "20");
+    EXPECT_EQ(int_dict.Get("2"), "20");
+    EXPECT_FALSE(int_dict.IsSet("3"));
+    EXPECT_THROW(int_dict.Get("3"), MyNotFoundException<string>);
+}
+
+TEST(simple_testing, multiple_elements) {
+
+    MyDictionary<int, int> int_dict;
+    std::vector<int> values(5000);
+    for (int i = 0; i < 5000; i++)
+        values[i] = i;
+
+    std::random_shuffle(values.begin(), values.end());
+
+    for (int i = 0; i<5000; i++)
+        int_dict.Set(values[i], values[i]);
+
+    std::random_shuffle(values.begin(), values.end());
+
+    for (int i = 0; i < 5000; i++)
+        EXPECT_EQ(values[i], int_dict.Get(values[i]));
+}
 
 struct A{
-    int val;
-
-    explicit A(int v)
-    : val(v)
-    {}
-
+    int val1, val2;
+    explicit A(int v1, int v2) : val1(v1), val2(v2) {}
     friend bool operator==(const A& a1, const A& a2);
-    //friend bool operator<(const A& a1, const A& a2);
 };
+bool operator==(const A& a1, const A& a2){return a1.val1 == a2.val1 && a1.val2 == a2.val2;}
 
-bool operator==(const A& a1, const A& a2){
-    return a1.val == a2.val;
+TEST(cases_testing, eq_only_struct){
+    MyDictionary<A, A> A_dict;
+    A a1(10, 10), a2(20, -1), a3(20, -1), a4(10, -1);
+    A_dict.Set(a1, a4);
+    A_dict.Set(a2, a3);
+    EXPECT_EQ(A_dict.Get(a1),a4);
+    EXPECT_EQ(A_dict.Get(a3),a3);
+
+    A_dict.Set(a1, a1);
+    EXPECT_EQ(A_dict.Get(a1), a1);
+    EXPECT_THROW(A_dict.Get(a4),MyNotFoundException<A>);
+    EXPECT_FALSE(A_dict.IsSet(a4));
 }
+
+class B{
+    int val1, val2;
+    friend bool operator==(const B& b1, const B& b2);
+    friend bool operator<(const B& b1, const B& b2);
+
+public:
+    explicit B(int v1, int v2) : val1(v1), val2(v2) {}
+};
+bool operator==(const B& b1, const B& b2){return b1.val1 == b2.val1 && b1.val2 == b2.val2;}
+bool operator<(const B& b1, const B& b2){return (b1.val1 == b2.val1 ? b1.val2 < b2.val2 : b1.val1 < b2.val2);}
+
+TEST(cases_testing, eq_comp_struct){
+    MyDictionary<B, B> B_dict;
+    B b();
+    B b1(10, 10), b2(20, -1), b3(20, -1), b4(10, -1);
+    B_dict.Set(b1, b4);
+    B_dict.Set(b2, b3);
+    EXPECT_EQ(B_dict.Get(b1),b4);
+    EXPECT_EQ(B_dict.Get(b3),b3);
+
+    B_dict.Set(b1, b1);
+    EXPECT_EQ(B_dict.Get(b1), b1);
+    EXPECT_THROW(B_dict.Get(b4),MyNotFoundException<B>);
+    EXPECT_FALSE(B_dict.IsSet(b4));
+}
+
+class C{
+    int val1, val2;
+    friend bool operator==(const C& c1, const C& c2);
+    friend std::hash<C>;
+public:
+    explicit C(int v1, int v2) : val1(v1), val2(v2) {}
+};
+bool operator==(const C& c1, const C& c2){return c1.val1 == c2.val1 && c1.val2 == c2.val2;}
 
 namespace std {
     template<>
-    struct hash<A>{
-        std::size_t operator()(A const &a) const noexcept {
-            std::size_t h1 = std::hash<int>{}(a.val);
-            return h1;
+    struct hash<C>{
+        std::size_t operator()(C const &c) const noexcept {
+            std::size_t h1 = std::hash<int>{}(c.val1);
+            std::size_t h2 = std::hash<int>{}(c.val2);
+            return h1 ^ (h2 << 1);
         }
     };
 }
 
+TEST(cases_testing, eq_hash_struct){
+    MyDictionary<C, C> C_dict;
+    C c1(10, 10), c2(20, -1), c3(20, -1), c4(10, -1);
+    C_dict.Set(c1, c4);
+    C_dict.Set(c2, c3);
+    EXPECT_EQ(C_dict.Get(c1),c4);
+    EXPECT_EQ(C_dict.Get(c3),c3);
 
-struct B{
-    int val;
+    C_dict.Set(c1, c1);
+    EXPECT_EQ(C_dict.Get(c1), c1);
+    EXPECT_THROW(C_dict.Get(c4),MyNotFoundException<C>);
+    EXPECT_FALSE(C_dict.IsSet(c4));
 
-    explicit B(int v)
-            : val(v)
-    {}
-
-    friend bool operator==(const B& b1, const B& b2);
-    friend bool operator<(const B& b1, const B& b2);
-};
-
-bool operator==(const B& b1, const B& b2){
-    return b1.val == b2.val;
-}
-bool operator<(const B& b1, const B& b2){
-    return b1.val < b2.val;
+    MyDictionary<C, C> C_dict(10, 1);
 }
 
-struct C{
-    int val;
+TEST(cases_testing, touch_diff_types){
+    MyDictionary<char, int> char_dict;
+    char_dict.Set('0', 1);
+    EXPECT_EQ(char_dict.Get('0'), 1);
+    EXPECT_FALSE(char_dict.IsSet('1'));
 
-    explicit C(int v)
-            : val(v)
-    {}
+    MyDictionary<bool, int> bool_dict;
+    bool_dict.Set(false,1);
+    EXPECT_EQ(bool_dict.Get(false), 1);
+    EXPECT_THROW(bool_dict.Get(true), MyNotFoundException<bool>);
 
-    friend bool operator==(const C& c1, const C& c2);
-};
-
-bool operator==(const C& c1, const C& c2){
-    return c1.val == c2.val;
-}
-
-
-int main() {
-
-
-    MyDictionary<int, int> Int_dic;
-
-    Int_dic.Set(1, 10);
-    Int_dic.Set(2, 20);
-    std::cout<<Int_dic.Get(2);
-    std::cout<<' '<< (Int_dic.IsSet(3) ? Int_dic.Get(3) : Int_dic.Get(1))<<'\n';
-
-   MyDictionary<A, A> A_dic;
-    A a1(20);
-    a1.val = 20;
-    A a2(10);
-    a2.val = 10;
-    A_dic.Set(a1, a2);
-    A_dic.Set(a2, a1);
-    A a3(30);
-    a3.val = 20;
-    std::cout<<A_dic.Get(a2).val<<' '<<(A_dic.IsSet(a3) ? "Yes" : "No")<<'\n';
-
-    MyDictionary<B, B> B_dic;
-    B b1(20);
-    b1.val = 20;
-    B b2(10);
-    b2.val = 10;
-    B_dic.Set(b1, b2);
-    B_dic.Set(b2, b1);
-    B b3(30);
-    b3.val = 20;
-    std::cout<<B_dic.Get(b2).val<<' '<<(B_dic.IsSet(b3) ? "Yes" : "No")<<'\n';
-
-    MyDictionary<C, C> C_dic;
-    C c1(20);
-    c1.val = 20;
-    C c2(10);
-    c2.val = 10;
-    C_dic.Set(c1, c2);
-    C_dic.Set(c2, c1);
-    C c3(30);
-    c3.val = 20;
-    std::cout<<C_dic.Get(c2).val<<' '<<(C_dic.IsSet(c3) ? "Yes" : "No")<<'\n';
-
-    MyDictionary<std::string, std::string> Str_dic;
-
-    Str_dic.Set("1", "2");
-    Str_dic.Set("2", "1");
-    std::cout<<Str_dic.Get("2")<<Str_dic.Get("1")<<'\n';
-
-    MyDictionary<int, int> Int_dic_stress;
-    std::vector<int> values;
-    for (int i = 0; i < 3000; i++)
-        values.push_back(i);
-
-    std::random_shuffle(values.begin(), values.end());
-
-    for (int i = 0; i<3000; i++)
-        Int_dic_stress.Set(i, i);
-    std::random_shuffle(values.begin(), values.end());
-
-    for (int i = 0; i < 3000; i++){
-        if (values[i] == Int_dic_stress.Get(values[i]))
-            std::cout<<values[i]<<' ';
-        else
-            throw 32;
-    }
-
-
-    return 0;
+    MyDictionary<long double, int> double_dict;
+    double_dict.Set(123456789.0, 1);
+    EXPECT_EQ(double_dict.Get(123456789.0), 1);
+    EXPECT_THROW(double_dict.Get(0.0), MyNotFoundException<long double>);
 }
