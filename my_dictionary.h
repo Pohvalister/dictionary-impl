@@ -194,12 +194,12 @@ class MyDictionary<TKey, TValue,//for binary tree
 public:
     MyDictionary()
             : root(nullptr) {
-        std::cout<<"heap\n";
     }
 
     ~MyDictionary() {
         std::stack<DataNode *> st;
-        st.push(root);
+        if (root != nullptr)
+            st.push(root);
         while (st.size() != 0) {
             DataNode *pointer = st.top();
             st.pop();

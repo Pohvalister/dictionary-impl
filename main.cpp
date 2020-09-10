@@ -46,6 +46,15 @@ TEST(simple_testing, multiple_elements) {
         EXPECT_EQ(values[i], int_dict.Get(values[i]));
 }
 
+TEST(simple_testing, except_check) {
+
+    MyDictionary<int, int> int_dict;
+    try{
+        int_dict.Get(1);
+    } catch (MyNotFoundException<int> e){
+        EXPECT_EQ(e.GetKey(),1);
+    }
+}
 struct A{
     int val1, val2;
     explicit A(int v1, int v2) : val1(v1), val2(v2) {}
@@ -125,8 +134,6 @@ TEST(cases_testing, eq_hash_struct){
     EXPECT_EQ(C_dict.Get(c1), c1);
     EXPECT_THROW(C_dict.Get(c4),MyNotFoundException<C>);
     EXPECT_FALSE(C_dict.IsSet(c4));
-
-    MyDictionary<C, C> C_dict(10, 1);
 }
 
 TEST(cases_testing, touch_diff_types){
