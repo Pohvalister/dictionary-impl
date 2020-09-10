@@ -1,6 +1,5 @@
 #include <iostream>
 #include <unordered_map>
-#include <map>
 #include "my_dictionary.h"
 
 using namespace std;
@@ -13,15 +12,24 @@ struct A{
     {}
 
     friend bool operator==(const A& a1, const A& a2);
-    //friend bool operator<(const A& a1, const A& a2);
+    friend bool operator<(const A& a1, const A& a2);
 };
 
 bool operator==(const A& a1, const A& a2){
     return a1.val == a2.val;
 }
-/*bool operator<(const A& a1, const A& a2){
+namespace std {
+    template<>
+    struct hash<A>{
+        std::size_t operator()(A const &a) const noexcept {
+            std::size_t h1 = std::hash<int>{}(a.val);
+            return h1;
+        }
+    };
+}
+bool operator<(const A& a1, const A& a2){
     return a1.val < a2.val;
-}*/
+}
 
 int main() {
 
@@ -30,9 +38,11 @@ int main() {
 
     Int_dic.Set(1, 10);
     Int_dic.Set(2, 20);
-    std::cout<<Int_dic.Get(2)<<' '<< (Int_dic.IsSet(3) ? Int_dic.Get(3) : Int_dic.Get(1))<<'\n';
+    std::cout<<Int_dic.Get(2);
+    std::cout<<' '<< (Int_dic.IsSet(3) ? Int_dic.Get(3) : Int_dic.Get(1))<<'\n';
 
-    MyDictionary<A, A> A_dic;
+
+   MyDictionary<A, A> A_dic;
     A a1(20);
     a1.val = 20;
     A a2(10);
@@ -49,6 +59,23 @@ int main() {
     Str_dic.Set("2", "1");
     std::cout<<Str_dic.Get("2")<<Str_dic.Get("1")<<'\n';
 
+    MyDictionary<int, int> Int_dic_stress;
+    std::vector<int> values;
+    for (int i = 0; i < 3000; i++)
+        values.push_back(i);
+
+    std::random_shuffle(values.begin(), values.end());
+
+    for (int i = 0; i<3000; i++)
+        Int_dic_stress.Set(i, i);
+    std::random_shuffle(values.begin(), values.end());
+
+    for (int i = 0; i < 3000; i++){
+        if (values[i] == Int_dic_stress.Get(values[i]))
+            std::cout<<values[i]<<' ';
+        else
+            throw 32;
+    }
 
 
     return 0;
