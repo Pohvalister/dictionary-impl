@@ -1,9 +1,10 @@
 # Dictionary implementation
-=====================
+
 # Задание:
 Необходимо реализовать класс контейнера, реализующий интерфейс Dictionary и способный выбросить исключение, реализующее интерфейс NotFoundException.
 При разработке допускается использовать STL. Кроме этого, внутренняя реализация ничем не ограничена.
 
+```
 template<class TKey, class TValue>
 class Dictionary
 {
@@ -21,6 +22,7 @@ class NotFoundException : public std::exception
 public:
     virtual const TKey& GetKey() const noexcept = 0;
 };
+```
 ---
 # Релизация:
 Для интерфейса были реализованы 3 класса, каждый со своими особенностями:
