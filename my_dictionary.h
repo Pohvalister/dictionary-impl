@@ -29,10 +29,10 @@ public:
 
 //error implementation
 template<class TKey>
-class MyNotFoundException : NotFoundException<TKey> {
+class DictionaryNotFoundException : NotFoundException<TKey> {
     const TKey key;
 public:
-    MyNotFoundException(TKey k)
+    explicit DictionaryNotFoundException(TKey k)
             : key(k) {}
 
     virtual const TKey &GetKey() const noexcept {
@@ -81,13 +81,18 @@ struct is_comparable<T, std::void_t<comparison<T>>>
 //default template dictionary
 //hash function dictionary: uses "==" and std::hash<T>
 template<class TKey, class TValue, class Enable = void>
-class HashDictionary : Dictionary<TKey, TValue> {};
+class HashDictionary : Dictionary<TKey, TValue> {
+};
+
 //binary tree dictionary: using "==" and "<" operators
-template <class TKey, class TValue, typename Enable = void>
-class HeapDictionary: Dictionary<TKey, TValue>{};
+template<class TKey, class TValue, typename Enable = void>
+class TreeDictionary : Dictionary<TKey, TValue> {
+};
+
 //general ineffective dictionary: uses "==" operator
-template <class TKey, class TValue, typename Enable = void>
-class ListDictionary: Dictionary<TKey, TValue>{};
+template<class TKey, class TValue, typename Enable = void>
+class ListDictionary : Dictionary<TKey, TValue> {
+};
 
 
 template<class TKey, class TValue>
@@ -96,7 +101,7 @@ class HashDictionary<TKey, TValue,//for hash_table
 >
         : Dictionary<TKey, TValue> {
 private:
-    const std::size_t MAS_SIZE = 1023;
+    const std::size_t MAS_SIZE = 9973;
     const std::size_t SIZE_MULTIPLIER = 3;
     const std::size_t PART_EMPTY = 4;
     int amount = 0;
@@ -131,7 +136,7 @@ public:
             if (table[hash_val][i].first == key)
                 return table[hash_val][i].second;
 
-        throw MyNotFoundException<TKey>(key);
+        throw DictionaryNotFoundException<TKey>(key);
     }
 
     virtual void Set(const TKey &key, const TValue &value) {
@@ -165,29 +170,93 @@ public:
 };
 
 template<class TKey, class TValue>
-class HeapDictionary<TKey, TValue,//for binary tree
+class TreeDictionary<TKey, TValue,//for binary tree
         typename std::enable_if<is_comparable<TKey>::value && is_equality<TKey>::value>::type
 >
         : Dictionary<TKey, TValue> {
-    //Binary-tree node
+
+    //AVL-tree node
     struct DataNode {
         TKey key;
         TValue val;
+        unsigned char high;
         DataNode *left;
         DataNode *right;
 
         DataNode(const TKey &k, const TValue &v)
-                : key(k), val(v), left(nullptr), right(nullptr) {}
+                : key(k), val(v), left(nullptr), right(nullptr), high(1) {}
     };
+
+    //AVL-tree balance pack
+    inline unsigned char height(DataNode *pointer) {
+        return pointer == nullptr ? 0 : pointer->high;
+    }
+
+    inline int height_balance(DataNode *node) {
+        return height(node->right) - height(node->left);
+    }
+
+    inline void height_restore(DataNode *node) {
+        unsigned char hl = height(node->left), hr = height(node->right);
+        node->high = (hl > hr ? hl : hr) + 1;
+    }
+
+    DataNode *rotate_right(DataNode *node) {
+        DataNode *new_top = node->left;
+        node->left = new_top->right;
+        new_top->right = node;
+        height_restore(node);
+        height_restore(new_top);
+        return new_top;
+    }
+
+    DataNode *rotate_left(DataNode *node) {
+        DataNode *new_top = node->right;
+        node->right = new_top->left;
+        new_top->left = node;
+        height_restore(node);
+        height_restore(new_top);
+        return new_top;
+    }
+
+    DataNode *balance(DataNode *node) {
+        height_restore(node);
+        if (height_balance(node) == 2) {
+            if (height_balance(node->right) < 0)
+                node->right = rotate_right(node->right);
+            return rotate_left(node);
+        }
+        if (height_balance(node) == -2) {
+            if (height_balance(node->left) > 0)
+                node->left = rotate_left(node->left);
+            return rotate_right(node);
+        }
+        return node;
+    }
+
+    //returns top node of balanced subtree
+    DataNode *insert(DataNode *pointer, const TKey &key, const TValue &value) {
+        if (pointer == nullptr)
+            return new DataNode(key, value);
+        if (key == pointer->key)
+            pointer->val = value;
+        else if (key < pointer->key)
+            pointer->left = insert(pointer->left, key, value);
+        else
+            pointer->right = insert(pointer->right, key, value);
+
+        return balance(pointer);
+    }
 
     DataNode *root;
 
+    //returns pointer to data or nullptr if no
     DataNode *find_value(const TKey &key) const {
         DataNode *data_pointer = root;
         while (data_pointer != nullptr) {
             if (data_pointer->key == key)
                 return data_pointer;
-            if (data_pointer->key < key)
+            if (key < data_pointer->key)
                 data_pointer = data_pointer->left;
             else
                 data_pointer = data_pointer->right;
@@ -196,11 +265,11 @@ class HeapDictionary<TKey, TValue,//for binary tree
     }
 
 public:
-    HeapDictionary()
+    TreeDictionary()
             : root(nullptr) {
     }
 
-    ~HeapDictionary() {
+    ~TreeDictionary() {
         std::stack<DataNode *> st;
         if (root != nullptr)
             st.push(root);
@@ -220,7 +289,7 @@ public:
         if (data != nullptr)
             return data->val;
 
-        throw MyNotFoundException<TKey>(key);
+        throw DictionaryNotFoundException<TKey>(key);
     }
 
     virtual void Set(const TKey &key, const TValue &value) {
@@ -228,26 +297,7 @@ public:
             root = new DataNode(key, value);
             return;
         }
-        DataNode *data_pointer = root;
-        while (true) {
-            if (data_pointer->key == key) {
-                data_pointer->val = value;
-                return;
-            }
-            if (data_pointer->key < key) {
-                if (data_pointer->left == nullptr) {
-                    data_pointer->left = new DataNode(key, value);
-                    return;
-                }
-                data_pointer = data_pointer->left;
-            } else {
-                if (data_pointer->right == nullptr) {
-                    data_pointer->right = new DataNode(key, value);
-                    return;
-                }
-                data_pointer = data_pointer->right;
-            }
-        }
+        root = insert(root, key, value);
     }
 
     virtual bool IsSet(const TKey &key) const {
@@ -266,14 +316,15 @@ private:
         TKey key;
         TValue val;
         DataNode *next;
+
         DataNode(const TKey &k, const TValue &v)
                 : key(k), val(v), next(nullptr) {}
     };
 
-    DataNode* root = nullptr;
+    DataNode *root = nullptr;
 
-    DataNode* find_value(const TKey &key) const {
-        DataNode * pointer = root;
+    DataNode *find_value(const TKey &key) const {
+        DataNode *pointer = root;
         while (pointer != nullptr)
             if (pointer->key == key)
                 return pointer;
@@ -286,7 +337,7 @@ private:
 public:
     ListDictionary() = default;
 
-    ~ListDictionary(){
+    ~ListDictionary() {
         std::stack<DataNode *> st;
         if (root != nullptr)
             st.push(root);
@@ -300,15 +351,15 @@ public:
     }
 
     virtual const TValue &Get(const TKey &key) const {
-        DataNode* pointer = find_value(key);
+        DataNode *pointer = find_value(key);
         if (pointer != nullptr)
             return pointer->val;
 
-        throw MyNotFoundException<TKey>(key);
+        throw DictionaryNotFoundException<TKey>(key);
     }
 
     virtual void Set(const TKey &key, const TValue &value) {
-        DataNode* pointer = find_value(key);
+        DataNode *pointer = find_value(key);
         if (pointer != nullptr)
             pointer->val = value;
         else {
@@ -322,6 +373,5 @@ public:
         return find_value(key) != nullptr;
     }
 };
-
 
 #endif //DICTIONARY_MY_DICTIONARY_H
