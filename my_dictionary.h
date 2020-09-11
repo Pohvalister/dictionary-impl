@@ -85,12 +85,12 @@ class HashDictionary : Dictionary<TKey, TValue> {
 };
 
 //binary tree dictionary: uses "==" and "<" operators
-template<class TKey, class TValue, typename Enable = void>
+template<class TKey, class TValue, class Enable = void>
 class TreeDictionary : Dictionary<TKey, TValue> {
 };
 
 //general ineffective dictionary: uses "==" operator
-template<class TKey, class TValue, typename Enable = void>
+template<class TKey, class TValue, class Enable = void>
 class ListDictionary : Dictionary<TKey, TValue> {
 };
 
