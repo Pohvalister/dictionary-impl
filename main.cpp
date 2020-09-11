@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 using namespace std;
+
 TEST(simple_selective_testing, int_work) {
     TreeDictionary<int, int> int_dict;
 
@@ -19,6 +20,16 @@ TEST(simple_selective_testing, string_work) {
     int_dict.Set("1", "10");
     int_dict.Set("2", "20");
     EXPECT_EQ(int_dict.Get("2"), "20");
+    EXPECT_FALSE(int_dict.IsSet("3"));
+    EXPECT_THROW(int_dict.Get("3"), DictionaryNotFoundException<string>);
+}
+
+TEST(simple_selective_testing, diff_types){
+    HashDictionary<string, int> int_dict;
+
+    int_dict.Set("1", 10);
+    int_dict.Set("2", 20);
+    EXPECT_EQ(int_dict.Get("2"), 20);
     EXPECT_FALSE(int_dict.IsSet("3"));
     EXPECT_THROW(int_dict.Get("3"), DictionaryNotFoundException<string>);
 }

@@ -41,7 +41,7 @@ public:
 };
 
 
-//defining cases of different data capabilities to get different scenarios of structure working
+//defining cases of different data capabilities to get right scenario of structure working
 template<class T>
 using equality_comparison = decltype(std::declval<T &>() == std::declval<T &>());
 
@@ -52,11 +52,11 @@ template<class T>
 using hashable = decltype(std::declval<std::hash<T>>()(std::declval<T>()));
 
 template<class T, typename = std::void_t<>>
-struct is_equality
+struct is_equal
         : std::false_type {
 };
 template<class T>
-struct is_equality<T, std::void_t<equality_comparison<T>>>
+struct is_equal<T, std::void_t<equality_comparison<T>>>
         : std::is_same<equality_comparison<T>, bool> {
 };
 
@@ -78,13 +78,13 @@ struct is_comparable<T, std::void_t<comparison<T>>>
         : std::is_same<comparison<T>, bool> {
 };
 
-//default template dictionary
+//template default dictionaries
 //hash function dictionary: uses "==" and std::hash<T>
 template<class TKey, class TValue, class Enable = void>
 class HashDictionary : Dictionary<TKey, TValue> {
 };
 
-//binary tree dictionary: using "==" and "<" operators
+//binary tree dictionary: uses "==" and "<" operators
 template<class TKey, class TValue, typename Enable = void>
 class TreeDictionary : Dictionary<TKey, TValue> {
 };
@@ -96,8 +96,8 @@ class ListDictionary : Dictionary<TKey, TValue> {
 
 
 template<class TKey, class TValue>
-class HashDictionary<TKey, TValue,//for hash_table
-        typename std::enable_if<is_std_hashable<TKey>::value && is_equality<TKey>::value>::type
+class HashDictionary<TKey, TValue,
+        typename std::enable_if<is_std_hashable<TKey>::value && is_equal<TKey>::value>::type
 >
         : Dictionary<TKey, TValue> {
 private:
@@ -117,8 +117,9 @@ private:
         std::vector<std::vector<std::pair<TKey, TValue>>> tmp_table(new_size);
         std::swap(table, tmp_table);
 
-        for (std::vector<std::pair<TKey, TValue>> vec : tmp_table)
-            for (std::pair<TKey, TValue> pair : vec)
+        amount = 0;
+        for (const std::vector<std::pair<TKey, TValue>> &vec : tmp_table)
+            for (const std::pair<TKey, TValue> &pair : vec)
                 this->Set(pair.first, pair.second);
     }
 
@@ -141,9 +142,8 @@ public:
 
     virtual void Set(const TKey &key, const TValue &value) {
         amount++;
-        if (amount > table.size() / PART_EMPTY) {
+        if (amount > table.size() / PART_EMPTY)
             resize_table();
-        }
 
         std::size_t hash_val = get_place(key);
 
@@ -160,18 +160,17 @@ public:
     virtual bool IsSet(const TKey &key) const {
         std::size_t hash_val = get_place(key);
 
-        for (std::pair<TKey, TValue> data : table[hash_val]) {
+        for (const std::pair<TKey, TValue> &data : table[hash_val])
             if (data.first == key)
                 return true;
-        }
 
         return false;
     }
 };
 
 template<class TKey, class TValue>
-class TreeDictionary<TKey, TValue,//for binary tree
-        typename std::enable_if<is_comparable<TKey>::value && is_equality<TKey>::value>::type
+class TreeDictionary<TKey, TValue,
+        typename std::enable_if<is_comparable<TKey>::value && is_equal<TKey>::value>::type
 >
         : Dictionary<TKey, TValue> {
 
@@ -234,7 +233,7 @@ class TreeDictionary<TKey, TValue,//for binary tree
         return node;
     }
 
-    //returns top node of balanced subtree
+    //returns top node of balanced subtree after insertion
     DataNode *insert(DataNode *pointer, const TKey &key, const TValue &value) {
         if (pointer == nullptr)
             return new DataNode(key, value);
@@ -269,10 +268,11 @@ public:
             : root(nullptr) {
     }
 
-    ~TreeDictionary() {
+    ~TreeDictionary() {//delete tree
         std::stack<DataNode *> st;
         if (root != nullptr)
             st.push(root);
+
         while (st.size() != 0) {
             DataNode *pointer = st.top();
             st.pop();
@@ -293,10 +293,6 @@ public:
     }
 
     virtual void Set(const TKey &key, const TValue &value) {
-        if (root == nullptr) {
-            root = new DataNode(key, value);
-            return;
-        }
         root = insert(root, key, value);
     }
 
@@ -307,11 +303,12 @@ public:
 
 template<class TKey, class TValue>
 class ListDictionary<TKey, TValue,
-        typename std::enable_if<is_equality<TKey>::value>::type
+        typename std::enable_if<is_equal<TKey>::value>::type
 >
         : public Dictionary<TKey, TValue> {
 
 private:
+    //Linkedlist node
     struct DataNode {
         TKey key;
         TValue val;
